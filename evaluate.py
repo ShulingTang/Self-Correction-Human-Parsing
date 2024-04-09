@@ -40,7 +40,7 @@ def get_arguments():
     # Network Structure
     parser.add_argument("--arch", type=str, default='resnet101')
     # Data Preference
-    parser.add_argument("--data-dir", type=str, default='./data/LIP')
+    parser.add_argument("--data-dir", type=str, default='./data/dresscode')
     parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--input-size", type=str, default='473,473')
     parser.add_argument("--num-classes", type=int, default=20)

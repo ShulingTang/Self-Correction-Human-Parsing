@@ -16,13 +16,15 @@ import numpy as np
 import random
 import torch
 import cv2
+from PIL import Image
 from torch.utils import data
 from utils.transforms import get_affine_transform
 
 
 class LIPDataSet(data.Dataset):
     def __init__(self, root, dataset, crop_size=[473, 473], scale_factor=0.25,
-                 rotation_factor=30, ignore_label=255, transform=None):
+                 rotation_factor=30, ignore_label=255, transform=None,
+                 train_test=False):
         self.root = root
         self.aspect_ratio = crop_size[1] * 1.0 / crop_size[0]
         self.crop_size = np.asarray(crop_size)
@@ -35,6 +37,8 @@ class LIPDataSet(data.Dataset):
 
         list_path = os.path.join(self.root, self.dataset + '_id.txt')
         train_list = [i_id.strip() for i_id in open(list_path)]
+        if train_test:
+            train_list = random.sample(train_list, 5000)
 
         self.train_list = train_list
         self.number_samples = len(self.train_list)
@@ -65,7 +69,7 @@ class LIPDataSet(data.Dataset):
 
         im = cv2.imread(im_path, cv2.IMREAD_COLOR)
         h, w, _ = im.shape
-        parsing_anno = np.zeros((h, w), dtype=np.long)
+        parsing_anno = np.zeros((h, w), dtype=np.longlong)
 
         # Get person center and scale
         person_center, s = self._box2cs([0, 0, w - 1, h - 1])
@@ -73,7 +77,9 @@ class LIPDataSet(data.Dataset):
 
         if self.dataset != 'test':
             # Get pose annotation
-            parsing_anno = cv2.imread(parsing_anno_path, cv2.IMREAD_GRAYSCALE)
+            # parsing_anno = cv2.imread(parsing_anno_path, cv2.IMREAD_GRAYSCALE)
+            parsing_anno_img = Image.open(parsing_anno_path)
+            parsing_anno = np.array(parsing_anno_img)
             if self.dataset == 'train' or self.dataset == 'trainval':
                 sf = self.scale_factor
                 rf = self.rotation_factor
@@ -199,3 +205,4 @@ class LIPDataValSet(data.Dataset):
         }
 
         return batch_input_im, meta
+
