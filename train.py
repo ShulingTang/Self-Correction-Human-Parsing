@@ -42,10 +42,10 @@ def get_arguments():
     # Network Structure
     parser.add_argument("--arch", type=str, default='resnet101')
     # Data Preference
-    parser.add_argument("--data-dir", type=str, default='./data/LIP')
-    parser.add_argument("--batch-size", type=int, default=16)
-    parser.add_argument("--input-size", type=str, default='473,473')
-    parser.add_argument("--num-classes", type=int, default=20)
+    parser.add_argument("--data-dir", type=str, default='/home/tsl/data/HumanParsing/shhq_cihp/train_data')
+    parser.add_argument("--batch-size", type=int, default=8)
+    parser.add_argument("--input-size", type=str, default='512,512')
+    parser.add_argument("--num-classes", type=int, default=24)
     parser.add_argument("--ignore-label", type=int, default=255)
     parser.add_argument("--random-mirror", action="store_true")
     parser.add_argument("--random-scale", action="store_true")
@@ -53,10 +53,10 @@ def get_arguments():
     parser.add_argument("--learning-rate", type=float, default=7e-3)
     parser.add_argument("--momentum", type=float, default=0.9)
     parser.add_argument("--weight-decay", type=float, default=5e-4)
-    parser.add_argument("--gpu", type=str, default='0,1,2')
+    parser.add_argument("--gpu", type=str, default='0')
     parser.add_argument("--start-epoch", type=int, default=0)
     parser.add_argument("--epochs", type=int, default=150)
-    parser.add_argument("--eval-epochs", type=int, default=10)
+    parser.add_argument("--eval-epochs", type=int, default=5)
     parser.add_argument("--imagenet-pretrain", type=str, default='./pretrain_model/resnet101-imagenet.pth')
     parser.add_argument("--log-dir", type=str, default='./log')
     parser.add_argument("--model-restore", type=str, default='./log/checkpoint.pth.tar')
@@ -103,11 +103,13 @@ def main():
     print('input space:{}'.format(INPUT_SPACE))
 
     restore_from = args.model_restore
+    loss_list = []
     if os.path.exists(restore_from):
         print('Resume training from {}'.format(restore_from))
         checkpoint = torch.load(restore_from)
         model.load_state_dict(checkpoint['state_dict'])
         start_epoch = checkpoint['epoch']
+        loss_list = checkpoint['loss_list']
 
     SCHP_AugmentCE2P = networks.init_model(args.arch, num_classes=args.num_classes, pretrained=args.imagenet_pretrain)
     schp_model = DataParallelModel(SCHP_AugmentCE2P)
@@ -182,12 +184,18 @@ def main():
                 with torch.no_grad():
                     soft_preds = schp_model(images)
                     soft_parsing = []
-                    soft_edge = []
-                    for soft_pred in soft_preds:
-                        soft_parsing.append(soft_pred[0][-1])
-                        soft_edge.append(soft_pred[1][-1])
-                    soft_preds = torch.cat(soft_parsing, dim=0)
-                    soft_edges = torch.cat(soft_edge, dim=0)
+                    try:
+                        soft_edge = []
+                        for soft_pred in soft_preds:
+                            soft_parsing.append(soft_pred[0][-1])
+                            soft_edge.append(soft_pred[1][-1])
+                        soft_preds = torch.cat(soft_parsing, dim=0)
+                        soft_edges = torch.cat(soft_edge, dim=0)
+                    except Exception as e:
+                        soft_edges = soft_preds[1][0]
+                        for soft_pred in soft_preds[0]:
+                            soft_parsing.append(torch.unsqueeze(soft_pred[-1], 0))
+                        soft_preds = torch.cat(soft_parsing, dim=0)
             else:
                 soft_preds = None
                 soft_edges = None
@@ -197,6 +205,7 @@ def main():
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+            loss_list.append((epoch, i_iter, loss.data.cpu().numpy()))
 
             if i_iter % 100 == 0:
                 print('iter = {} of {} completed, lr = {}, loss = {}'.format(i_iter, total_iters, lr,
@@ -205,6 +214,7 @@ def main():
             schp.save_schp_checkpoint({
                 'epoch': epoch + 1,
                 'state_dict': model.state_dict(),
+                'loss_list': loss_list
             }, False, args.log_dir, filename='checkpoint_{}.pth.tar'.format(epoch + 1))
 
         # Self Correction Cycle with Model Aggregation
