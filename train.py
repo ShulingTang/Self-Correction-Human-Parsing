@@ -183,8 +183,8 @@ def main():
             if cycle_n >= 1:
                 with torch.no_grad():
                     soft_preds = schp_model(images)
-                    soft_parsing = []
                     try:
+                        soft_parsing = []
                         soft_edge = []
                         for soft_pred in soft_preds:
                             soft_parsing.append(soft_pred[0][-1])
@@ -192,6 +192,7 @@ def main():
                         soft_preds = torch.cat(soft_parsing, dim=0)
                         soft_edges = torch.cat(soft_edge, dim=0)
                     except Exception as e:
+                        soft_parsing = []
                         soft_edges = soft_preds[1][0]
                         for soft_pred in soft_preds[0]:
                             soft_parsing.append(torch.unsqueeze(soft_pred[-1], 0))
