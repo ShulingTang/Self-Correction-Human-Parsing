@@ -4,10 +4,10 @@
 start_time=$(date +%s)
 
 # 定义路径log
-log_path="路径A"
-output_file="new_checkpoint.txt"
+log_path="log_shhq_cihp"
+output_file="${log_path}/new_checkpoint.txt"
 # 最终检查点文件名
-checkpoint_end="${log_path}/checkpoint_150.pth.tar"
+checkpoint_end="${log_path}/checkpoint_160.pth.tar"
 
 # 训练脚本文件名
 train_bash_file="train.sh"
@@ -25,11 +25,6 @@ fi
 
 # 监控并运行train.sh脚本
 while true; do
-    ./$train_bash_file
-    if [ $? -ne 0 ]; then
-        # train.sh运行中断或异常
-        break
-    fi
 
     # 获取number数值最大的文件名
     max_file=$(ls "$log_path"/checkpoint_*.pth.tar 2>/dev/null | awk -F'[_ .]' '{print $(NF-2)}' | sort -n | tail -1)
@@ -60,6 +55,11 @@ while true; do
         fi
         echo "$max_filename" > "$output_file"
     fi
-
     # 再次运行train.sh脚本
+    ./$train_bash_file
+    if [ $? -ne 0 ]; then
+        # train.sh运行中断或异常
+        echo "train.sh执行失败，正在重试..."
+    fi
+
 done

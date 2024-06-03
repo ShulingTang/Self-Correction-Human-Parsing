@@ -9,7 +9,7 @@ NUM_CLASSES=20
 INPUT_SIZE='512,512'
 BATCH_SIZE=8
 GPU_NUMS='0'
-EPOCHS=150
+EPOCHS=200
 EVAL_EPOCHS=2
 LOG_AND_SAVE_PATH='./log_shhq_cihp'
 
@@ -19,7 +19,7 @@ if [ -f "${NEW_CHECKPOINT_FILE}" ]; then
     NEW_CHECKPOINT=$(cat ${NEW_CHECKPOINT_FILE})
     RESTORE_FROM="${LOG_AND_SAVE_PATH}/${NEW_CHECKPOINT}"
 else
-    RESTORE_FROM="${LOG_AND_SAVE_PATH}/checkpoin_null.pth.tar"
+    RESTORE_FROM="${LOG_AND_SAVE_PATH}/checkpoint_160.pth.tar"
 fi
 
 echo "restore from: ${RESTORE_FROM}"
